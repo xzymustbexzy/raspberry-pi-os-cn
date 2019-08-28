@@ -8,7 +8,7 @@
 这里的每一节课程中，首先会解释一些RPi OS内核特性的实现，然后会展示Linux是如何实现这些特性的。每节课的内容在src文件夹下都有对应的代码实现，这有助于更加清晰地体现教程中的概念，让读者感受到RPi OS的演进过程。这份教程针对的是对操作系统开发感兴趣的读者，并不要求读者具备任何的操作系统开发基础。  
   
 # 目录
-+ 介绍
++ [介绍](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/Introduction.md)
 + 准备工作
 + **Lesson 1：内核初始化**
   - 1.1 欢迎来到RPi OS的世界，裸机上的"Hello, world"
