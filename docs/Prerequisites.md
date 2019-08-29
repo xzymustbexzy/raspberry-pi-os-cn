@@ -10,9 +10,9 @@
 SD卡可以是空的，也可以是安装了[Raspbian OS](https://www.raspberrypi.org/downloads/raspbian/)的。主要是需要SD卡上的启动程序来引导操作系统。  
 
 ## 4.Docker
-严格地说，Docker并不是硬性要求，安装它仅仅是为了方便。Docker可以在编译时屏蔽操作系统的差异，尤其是对于Windows和Mac用户来说，可以非常轻松地编译源文件。每一节课都有build.sh脚本（在Windows上是build.bat），这个脚本用于在Docker编译源码。安装Docker的教程请参见[Docker官方文档](https://docs.docker.com/install/)。  
+严格地说，Docker并不是硬性要求，安装它仅仅是为了方便。Docker可以在编译时屏蔽操作系统的差异，尤其是对于Windows和Mac用户来说，可以非常轻松地编译源文件。每一节课都有`build.sh`脚本（在Windows上是build.bat），这个脚本用于在Docker编译源码。安装Docker的教程请参见[Docker官方文档](https://docs.docker.com/install/)。  
   
-如果你不想用Docker，你可以安装[make工具](http://www.math.tau.ac.il/~danha/courses/software1/make-intro.html)以及aarch64-linux-gnu工具链，如果你用的是Ubuntu系统，你需要安装gcc-aarch64-linux-gnu和build-essential packages包。  
+如果你不想用Docker，你可以安装[make工具](http://www.math.tau.ac.il/~danha/courses/software1/make-intro.html)以及`aarch64-linux-gnu`工具链，如果你用的是Ubuntu系统，你需要安装`gcc-aarch64-linux-gnu`和`build-essential packages`包。  
   
 ### 上一章节
 [准备工作](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/Introduction.md)
