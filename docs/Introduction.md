@@ -44,3 +44,4 @@
 ### 上一章节
 [主页](https://github.com/s-matyukevich/raspberry-pi-os/)
 ### 下一章节
+[准备工作](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/Prerequisites.md)
