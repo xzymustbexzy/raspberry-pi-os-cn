@@ -8,7 +8,7 @@
 ## 项目结构
 课程的文件结构都是一样的，你可以在[这里]()找到课程对应的源代码。先简单介绍一下文件夹的主要组成部分：  
   
-1.**Makefile**： 我们使用make工具来构建内核。`make`会根据makefile的配置来执行相应的动作，所以在makefile中，我们需要给出一些如何编译与链接源代码的指令。  
+1.**Makefile**： 我们使用[make工具](http://www.math.tau.ac.il/~danha/courses/software1/make-intro.html)来构建内核。`make`会根据makefile的配置来执行相应的动作，所以在makefile中，我们需要给出一些如何编译与链接源代码的指令。  
 2.**build.sh或build.bat**： 如果你打算用Docker来构建内核，你就会用到这两个文件的其中一个。这样你就不需要在电脑上安装make工具或编译工具链了。  
 3.**src**： 该文件夹下包含了源代码。  
 4.**include**： 所有的头文件都放在这里。  
@@ -49,7 +49,9 @@ kernel8.img: $(SRC_DIR)/linker.ld $(OBJ_FILES)
     $(ARMGNU)-objcopy $(BUILD_DIR)/kernel8.elf -O binary kernel8.img  
 ```  
 现在，让我们仔细看看每一行的内容：  
-`ARMGNU ?= aarch64-linux-gnu`  
+```
+ARMGNU ?= aarch64-linux-gnu  
+```
 这个Makefile从一个变量定义开始，`ARMGNU`表示[交叉编译](https://baike.baidu.com/item/%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91/10916911?fr=aladdin)的前缀。我们需要使用一个交叉编译器，因为我们打算在`x86`的机器上生成`arm64`的可执行文件，所以我们用`aarch64-linux-gnu-gcc`来代替`gcc`。  
 ```  
 COPS = -Wall -nostdlib -nostartfiles -ffreestanding -Iinclude -mgeneral-regs-only  
@@ -98,9 +100,23 @@ DEP_FILES = $(OBJ_FILES:%.o=%.d)
 ```
 $(ARMGNU)-ld -T $(SRC_DIR)/linker.ld -o kernel8.elf  $(OBJ_FILES)  
 ```  
-我们使用`OBJ_FILES`列表去构建`kernel8.elf`文件。我们用链接脚本`src/linker.ld`来定义将要生成的可执行镜像的基本布局（我们将在下一节讨论链接脚本）。  
+我们使用`OBJ_FILES`列表去构建`kernel8.elf`文件。我们用链接器脚本`src/linker.ld`来定义将要生成的可执行镜像的基本布局（我们将在下一节讨论链接器脚本）。  
 ```  
 $(ARMGNU)-objcopy kernel8.elf -O binary kernel8.img  
 ```  
 `kernel8.elf`是一个[ELF](https://baike.baidu.com/item/ELF/7120560?fr=aladdin)格式的文件。但现在我们面临的问题是，ELF是一种被操作系统执行的文件，而我们现在是在裸机上写程序，则需要将所有的可执行的指令和数据区域从ELF文件中提取出来，然后把它们放入到`kernel8.img`镜像文件中。结尾的那个`8`用于64位的ARMv8架构，这个文件名告诉我们树莓派的固件，以64位模式去启动处理器。你也可以通过使用`config.txt`文件中的`arm_control=0x200`标志去启动CPU的64位模式，RPi OS原先就是采用这种方法的，后面练习中的一些题目也会涉及到。然而，`arm_control`标志的使用并没有在官方文档中，所以使用`kernel8.img`这样的惯用名字是一种更好的做法。  
-## 链接脚本
+## 链接器脚本
+链接器脚本的最初目的是描述输入文件（`_c.o`和`_s.o`）中的各个section是如何被映射到输出文件（`.elf`）的。想要了解更多关于链接器脚本的知识，可以看[这里](https://sourceware.org/binutils/docs/ld/Scripts.html#Scripts)。现在，让我们来看看RPi OS的链接器脚本：  
+```
+SECTIONS
+{
+    .text.boot : { *(.text.boot) }
+    .text :  { *(.text) }
+    .rodata : { *(.rodata) }
+    .data : { *(.data) }
+    . = ALIGN(0x8);
+    bss_begin = .;
+    .bss : { *(.bss*) } 
+    bss_end = .;
+}
+```
