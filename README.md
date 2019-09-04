@@ -11,7 +11,7 @@
 + [介绍](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/Introduction.md)
 + [准备工作](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/Prerequisites.md)
 + **Lesson 1：内核初始化**
-  - 1.1 欢迎来到RPi OS的世界，裸机上的"Hello, world"
+  - 1.1 [欢迎来到RPi OS的世界，裸机上的"Hello, world"](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/lesson01/rpi-os.md)
   - Linux
     * 1.2 项目结构
     * 1.3 内核构建
