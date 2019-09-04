@@ -106,7 +106,7 @@ $(ARMGNU)-objcopy kernel8.elf -O binary kernel8.img
 ```  
 `kernel8.elf`是一个[ELF](https://baike.baidu.com/item/ELF/7120560?fr=aladdin)格式的文件。但现在我们面临的问题是，ELF是一种被操作系统执行的文件，而我们现在是在裸机上写程序，则需要将所有的可执行的指令和数据区域从ELF文件中提取出来，然后把它们放入到`kernel8.img`镜像文件中。结尾的那个`8`用于64位的ARMv8架构，这个文件名告诉我们树莓派的固件，以64位模式去启动处理器。你也可以通过使用`config.txt`文件中的`arm_control=0x200`标志去启动CPU的64位模式，RPi OS原先就是采用这种方法的，后面练习中的一些题目也会涉及到。然而，`arm_control`标志的使用并没有在官方文档中，所以使用`kernel8.img`这样的惯用名字是一种更好的做法。  
 ## 链接器脚本
-链接器脚本的最初目的是描述输入文件（`_c.o`和`_s.o`）中的各个section是如何被映射到输出文件（`.elf`）的。想要了解更多关于链接器脚本的知识，可以看[这里](https://sourceware.org/binutils/docs/ld/Scripts.html#Scripts)。现在，让我们来看看RPi OS的链接器脚本：  
+链接器脚本的最初目的是描述输入文件（`_c.o`和`_s.o`）中的各个节（section）是如何被映射到输出文件（`.elf`）的。想要了解更多关于链接器脚本的知识，可以看[这里](https://sourceware.org/binutils/docs/ld/Scripts.html#Scripts)。现在，让我们来看看RPi OS的链接器脚本：  
 ```
 SECTIONS
 {
@@ -120,3 +120,4 @@ SECTIONS
     bss_end = .;
 }
 ```
+启动以后，树莓派就会把`kernel8.img`加载到内存中，然后从头开始执行文件，这也是`.text.boot`这个section必须被放在开头的原因。我们将要把操作系统的启动代码放到这个section中。`.text`，`.rodata`以及`.data`这几个section，分别表示内核编译后的指令序列、只读数据（read-only data）和常规数据，这些都是常规的部分，没有什么需要额外添加的。`.bss`section包含了那些应该被初始化为0的数据，将这些数据单独用一个section来存储，编译器就可以为二进制ELF节省更多的空间，因为这样只需要在ELF头部存储section的大小，而这个section本身就可以暂时不存了（因为里面都是0）。将镜像加载到内存以后，我们必须先将`.bss`section初始化为0，这也是我们必须要记录一个section的首地址和末地址的原因（即代码重的`bss_begin`和`bss_end`符号）。而且我们必须要让每个section的首地址以8的倍数对齐，如果一个section没有对齐，就没法用`str`指令在`bss`section的初始位置开始存0，因为`str`指令只能被用于按照8字节对齐的地址。
