@@ -5,7 +5,8 @@
   
 另一个我想说明的点就是，文章中会出现很多源代码，通常我会先展示整块源码，然后再对其进行逐行讲解。  
   
-## 项目结构
+### 项目结构
+  
 课程的文件结构都是一样的，你可以在[这里]()找到课程对应的源代码。先简单介绍一下文件夹的主要组成部分：  
   
 1.**Makefile**： 我们使用[make工具](http://www.math.tau.ac.il/~danha/courses/software1/make-intro.html)来构建内核。`make`会根据makefile的配置来执行相应的动作，所以在makefile中，我们需要给出一些如何编译与链接源代码的指令。  
@@ -106,7 +107,8 @@ $(ARMGNU)-objcopy kernel8.elf -O binary kernel8.img
 ```  
 `kernel8.elf`是一个[ELF](https://baike.baidu.com/item/ELF/7120560?fr=aladdin)格式的文件。但现在我们面临的问题是，ELF是一种被操作系统执行的文件，而我们现在是在裸机上写程序，则需要将所有的可执行的指令和数据区域从ELF文件中提取出来，然后把它们放入到`kernel8.img`镜像文件中。结尾的那个`8`用于64位的ARMv8架构，这个文件名告诉我们树莓派的固件，以64位模式去启动处理器。你也可以通过使用`config.txt`文件中的`arm_control=0x200`标志去启动CPU的64位模式，RPi OS原先就是采用这种方法的，后面练习中的一些题目也会涉及到。然而，`arm_control`标志的使用并没有在官方文档中，所以使用`kernel8.img`这样的惯用名字是一种更好的做法。  
   
-## 链接器脚本
+### 链接器脚本
+  
 链接器脚本的最初目的是描述输入文件（`_c.o`和`_s.o`）中的各个节（section）是如何被映射到输出文件（`.elf`）的。想要了解更多关于链接器脚本的知识，可以看[这里](https://sourceware.org/binutils/docs/ld/Scripts.html#Scripts)。现在，让我们来看看RPi OS的链接器脚本：  
 ```
 SECTIONS
@@ -123,7 +125,8 @@ SECTIONS
 ```
 启动以后，树莓派就会把`kernel8.img`加载到内存中，然后从头开始执行文件，这也是`.text.boot`这个section必须被放在开头的原因。我们将要把操作系统的启动代码放到这个section中。`.text`，`.rodata`以及`.data`这几个section，分别表示内核编译后的指令序列、只读数据（read-only data）和常规数据，这些都是常规的部分，没有什么需要额外添加的。`.bss`section包含了那些应该被初始化为0的数据，将这些数据单独用一个section来存储，编译器就可以为二进制ELF节省更多的空间，因为这样只需要在ELF头部存储section的大小，而这个section本身就可以暂时不存了（因为里面都是0）。将镜像加载到内存以后，我们必须先将`.bss`section初始化为0，这也是我们必须要记录一个section的首地址和末地址的原因（即代码重的`bss_begin`和`bss_end`符号）。而且我们必须要让每个section的首地址以8的倍数对齐，如果一个section没有对齐，就没法用`str`指令在`bss`section的初始位置开始存0，因为`str`指令只能被用于按照8字节对齐的地址。  
   
-## 启动内核
+### 启动内核
+  
 是时候来看看[boot.S](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/src/lesson01/src/boot.S)文件,该文件包含了内核启动代码：  
 ```
 #include "mm.h"
@@ -189,7 +192,8 @@ master:
   
 这个是[ARMv8-A开发者指南](http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.den0024a/index.html)，是学习ARM指令集很好的资源。[这个页面](http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.den0024a/ch09s01s01.html)详细地列出了寄存器的惯用方法。  
   
-## `kernel_main`函数
+### `kernel_main`函数
+  
 可以看到，启动代码最后还是将控制权交给了`kernel_main`函数，让我们来看看：  
 ```
 #include "mini_uart.h"
@@ -207,7 +211,8 @@ void kernel_main(void)
 ```
 这个函数是最简单的内核函数之一。它工作在`Mini UART`设备上，该设备可以在屏幕上打印内容，可以接收用户的键盘输入。内核仅仅打印了`Hello, World!`，然后进入了从用户那里读取字符输入的无限循环，并且会将读入的字符打印到屏幕上。  
   
-## 树莓派设备
+### 树莓派设备
+  
 现在，让我们来深入了解一下树莓派。在开始之前，我推荐你们下载一份[BCM2837 ARM设备手册](https://github.com/raspberrypi/documentation/files/1888662/BCM2837-ARM-Peripherals.-.Revised.-.V2-1.pdf)。BCM2837是树莓派3B和3B+用的板子，后面我也会提到BCM2835和BCM2836，它们是更早期版本的树莓派的板子名字。  
   
 在我们开始进一步的代码阅读之前，我想先分享一些关于内存映射型设备的基础概念。BCM2837是一种简单的[SOC（System on a chip）](https://en.wikipedia.org/wiki/System_on_a_chip)（中文：系统单芯片）板子，在这种板子上，所有的设备访问都是通过内存映射来完成的。树莓派3将高于`0x3F000000`的内存地址保留给外部设备，若要激活或者配置一个特定的设备，你需要在某个设备寄存器中写入数据。设备寄存器仅仅是一个32位的内存区域（这里说的寄存器跟CPU中的寄存器不是一个概念），其中每一个比特的含义请参见BCM2837 ARM设备手册。想知道为什么我们用`0x3F000000`作为起始地址的话，可以看看手册中1.2.3节关于物理地址的描述（即使整个手册中用的都是`0x7E000000`）。  
@@ -222,7 +227,8 @@ void kernel_main(void)
 可以通过对GPIO引脚的配置来使用GPIO。比如，为了能够使用Mini UART，我们可以将引脚14和引脚15设置为高电平，来激活该设备。下图阐述了GPIO引脚需要的分配：  
 ![GPIO引脚序号分配](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/images/gpio-numbers.png)  
   
-## Mini UART的初始化
+### Mini UART的初始化
+  
 现在，让我们来看看怎么将mini UART初始化。这份代码写在[mini_uart.c](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/src/lesson01/src/mini_uart.c)中：  
 ```
 void uart_init ( void )
@@ -254,4 +260,4 @@ void uart_init ( void )
 ```
 这里，我们使用了两个函数，分别是`put32`和`get32`。这两个函数非常简单，允许我们从一个32位寄存器去读取和写入数据。你可以在[utils.S](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/src/lesson01/src/utils.S)中看到它们的实现。`uart_init`这节课是最复杂也是最重要的一个函数，下面三节内容中，我们将围绕这个函数进行深入探索。  
   
-### GPIO替代函数的选择
+#### GPIO替代函数的选择
