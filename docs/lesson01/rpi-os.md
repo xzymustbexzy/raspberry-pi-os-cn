@@ -190,3 +190,68 @@ master:
 这个是[ARMv8-A开发者指南](http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.den0024a/index.html)，是学习ARM指令集很好的资源。[这个页面](http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.den0024a/ch09s01s01.html)详细地列出了寄存器的惯用方法。  
   
 ## `kernel_main`函数
+可以看到，启动代码最后还是将控制权交给了`kernel_main`函数，让我们来看看：  
+```
+#include "mini_uart.h"
+
+void kernel_main(void)
+{
+    uart_init();
+    uart_send_string("Hello, world!\r\n");
+
+    while (1) {
+        uart_send(uart_recv());
+    }
+}
+
+```
+这个函数是最简单的内核函数之一。它工作在`Mini UART`设备上，该设备可以在屏幕上打印内容，可以接收用户的键盘输入。内核仅仅打印了`Hello, World!`，然后进入了从用户那里读取字符输入的无限循环，并且会将读入的字符打印到屏幕上。  
+  
+## 树莓派设备
+现在，让我们来深入了解一下树莓派。在开始之前，我推荐你们下载一份[BCM2837 ARM设备手册](https://github.com/raspberrypi/documentation/files/1888662/BCM2837-ARM-Peripherals.-.Revised.-.V2-1.pdf)。BCM2837是树莓派3B和3B+用的板子，后面我也会提到BCM2835和BCM2836，它们是更早期版本的树莓派的板子名字。  
+  
+在我们开始进一步的代码阅读之前，我想先分享一些关于内存映射型设备的基础概念。BCM2837是一种简单的[SOC（System on a chip）](https://en.wikipedia.org/wiki/System_on_a_chip)（中文：系统单芯片）板子，在这种板子上，所有的设备访问都是通过内存映射来完成的。树莓派3将高于`0x3F000000`的内存地址保留给外部设备，若要激活或者配置一个特定的设备，你需要在某个设备寄存器中写入数据。设备寄存器仅仅是一个32位的内存区域（这里说的寄存器跟CPU中的寄存器不是一个概念），其中每一个比特的含义请参见BCM2837 ARM设备手册。想知道为什么我们用`0x3F000000`作为起始地址的话，可以看看手册中1.2.3节关于物理地址的描述（即使整个手册中用的都是`0x7E000000`）。  
+  
+从`kernel_main`函数中，你可以猜到我们将要接触Mini UART设备了。UART代表[Universal asynchronous receiver-transmitter](https://en.wikipedia.org/wiki/Universal_asynchronous_receiver-transmitter)。这个设备有能力将内存映射寄存器中的值转化为一系列的高低电平，这个高低电平通过`TTL转串口线`传递到你的电脑上，然后被你的模拟器软件翻译。我们打算用Mini UART去与树莓派进行通信。如果你想了解Mini UART的细节，请翻阅`BCM2837 ARM设备手册`的第八页。  
+  
+一个树莓派有两个UART：Mini UART和PL011 UART。在这份教程中，我们仅仅使用前者，因此它更简单。然而，一个选做的[练习](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/lesson01/exercises.md)中有关于如何使用PL011 UART的内容，如果你想了解更多关于树莓派的这些UART以及它们的区别，你可以参考[官方文档](https://www.raspberrypi.org/documentation/configuration/uart.md)  
+  
+另一个你需要熟悉的设备是GPIO（[General-purporse input/output](https://baike.baidu.com/item/gpio/4723219)）,GPIO
+是负责控制`GPIO引脚`的，从下图可以清楚地看到它们：  
+![GPIO引脚](https://github.com/Sword-holder/raspberry-pi-os-cn/tree/master/images/gpio-pins.jpg)  
+可以通过对GPIO引脚的配置来使用GPIO。比如，为了能够使用Mini UART，我们可以将引脚14和引脚15设置为高电平，来激活该设备。下图阐述了GPIO引脚需要的分配：  
+![GPIO引脚序号分配](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/images/gpio-numbers.png)  
+  
+## Mini UART的初始化
+现在，让我们来看看怎么将mini UART初始化。这份代码写在[mini_uart.c](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/src/lesson01/src/mini_uart.c)中：  
+```
+void uart_init ( void )
+{
+    unsigned int selector;
+
+    selector = get32(GPFSEL1);
+    selector &= ~(7<<12);                   // clean gpio14
+    selector |= 2<<12;                      // set alt5 for gpio14
+    selector &= ~(7<<15);                   // clean gpio15
+    selector |= 2<<15;                      // set alt5 for gpio 15
+    put32(GPFSEL1,selector);
+
+    put32(GPPUD,0);
+    delay(150);
+    put32(GPPUDCLK0,(1<<14)|(1<<15));
+    delay(150);
+    put32(GPPUDCLK0,0);
+
+    put32(AUX_ENABLES,1);                   //Enable mini uart (this also enables access to it registers)
+    put32(AUX_MU_CNTL_REG,0);               //Disable auto flow control and disable receiver and transmitter (for now)
+    put32(AUX_MU_IER_REG,0);                //Disable receive and transmit interrupts
+    put32(AUX_MU_LCR_REG,3);                //Enable 8 bit mode
+    put32(AUX_MU_MCR_REG,0);                //Set RTS line to be always high
+    put32(AUX_MU_BAUD_REG,270);             //Set baud rate to 115200
+
+    put32(AUX_MU_CNTL_REG,3);               //Finally, enable transmitter and receiver
+}
+```
+这里，我们使用了两个函数，分别是`put32`和`get32`。这两个函数非常简单，允许我们从一个32位寄存器去读取和写入数据。你可以在[utils.S](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/src/lesson01/src/utils.S)中看到它们的实现。`uart_init`这节课是最复杂也是最重要的一个函数，下面三节内容中，我们将围绕这个函数进行深入探索。  
+  
+### GPIO替代函数的选择
