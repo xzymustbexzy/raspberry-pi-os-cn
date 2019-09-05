@@ -223,7 +223,7 @@ void kernel_main(void)
   
 另一个你需要熟悉的设备是GPIO（[General-purporse input/output](https://baike.baidu.com/item/gpio/4723219)）,GPIO
 是负责控制`GPIO引脚`的，从下图可以清楚地看到它们：  
-![GPIO引脚](https://github.com/Sword-holder/raspberry-pi-os-cn/tree/master/images/gpio-pins.jpg)  
+![GPIO引脚](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/images/gpio-pins.jpg)  
 可以通过对GPIO引脚的配置来使用GPIO。比如，为了能够使用Mini UART，我们可以将引脚14和引脚15设置为高电平，来激活该设备。下图阐述了GPIO引脚需要的分配：  
 ![GPIO引脚序号分配](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/images/gpio-numbers.png)  
   
@@ -260,4 +260,23 @@ void uart_init ( void )
 ```
 这里，我们使用了两个函数，分别是`put32`和`get32`。这两个函数非常简单，允许我们从一个32位寄存器去读取和写入数据。你可以在[utils.S](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/src/lesson01/src/utils.S)中看到它们的实现。`uart_init`这节课是最复杂也是最重要的一个函数，下面三节内容中，我们将围绕这个函数进行深入探索。  
   
-#### GPIO替代函数的选择
+#### GPIO可选功能的配置
+  
+首先，我们需要激活GPIO引脚。多数的引脚可以被多种设备使用，因此在使用一个特定的引脚之前，我们需要选择引脚的`可选功能`，一个`可选功能`仅仅是一个取值范围为0-5的数值，它能够被设置到引脚上来配置与引脚连接的设备，你可以从下图中看到所有的GPIO的可选功能列表（这个图摘取自`BCM2837 ARM设备手册`中的102页）：  
+![GPIO可选功能列表](https://github.com/Sword-holder/raspberry-pi-os-cn/master/images/alt.png)  
+  
+在这里你可以看到14号和15号引脚有TXD1和RXD1可选功能，这意味着如果我们为14、15号引脚选择了5号可选功能，它们就会被用作Mini UART数据发送引脚和Mini UART数据接收引脚。`GPFSEL1`寄存器是用来控制10-19号引脚的可选功能的，这些寄存器每一位的功能如下表所示（`BCM2837 ARM设备手册`第92页）：  
+![寄存器每一位的功能](https://github.com/Sword-holder/raspberry-pi-os-cn/master/images/gpfsel1.png)  
+这样你就了解了下面这几行代码的含义，它们都是用来配置14和15号GPIO引脚的，以此实现UART的正常工作：  
+```
+    unsigned int selector;
+
+    selector = get32(GPFSEL1);
+    selector &= ~(7<<12);                   // clean gpio14
+    selector |= 2<<12;                      // set alt5 for gpio14
+    selector &= ~(7<<15);                   // clean gpio15
+    selector |= 2<<15;                      // set alt5 for gpio 15
+    put32(GPFSEL1,selector);
+```
+  
+#### GPIO 打开/关闭
