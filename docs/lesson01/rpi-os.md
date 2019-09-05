@@ -105,6 +105,7 @@ $(ARMGNU)-ld -T $(SRC_DIR)/linker.ld -o kernel8.elf  $(OBJ_FILES)
 $(ARMGNU)-objcopy kernel8.elf -O binary kernel8.img  
 ```  
 `kernel8.elf`是一个[ELF](https://baike.baidu.com/item/ELF/7120560?fr=aladdin)格式的文件。但现在我们面临的问题是，ELF是一种被操作系统执行的文件，而我们现在是在裸机上写程序，则需要将所有的可执行的指令和数据区域从ELF文件中提取出来，然后把它们放入到`kernel8.img`镜像文件中。结尾的那个`8`用于64位的ARMv8架构，这个文件名告诉我们树莓派的固件，以64位模式去启动处理器。你也可以通过使用`config.txt`文件中的`arm_control=0x200`标志去启动CPU的64位模式，RPi OS原先就是采用这种方法的，后面练习中的一些题目也会涉及到。然而，`arm_control`标志的使用并没有在官方文档中，所以使用`kernel8.img`这样的惯用名字是一种更好的做法。  
+  
 ## 链接器脚本
 链接器脚本的最初目的是描述输入文件（`_c.o`和`_s.o`）中的各个节（section）是如何被映射到输出文件（`.elf`）的。想要了解更多关于链接器脚本的知识，可以看[这里](https://sourceware.org/binutils/docs/ld/Scripts.html#Scripts)。现在，让我们来看看RPi OS的链接器脚本：  
 ```
@@ -120,4 +121,72 @@ SECTIONS
     bss_end = .;
 }
 ```
-启动以后，树莓派就会把`kernel8.img`加载到内存中，然后从头开始执行文件，这也是`.text.boot`这个section必须被放在开头的原因。我们将要把操作系统的启动代码放到这个section中。`.text`，`.rodata`以及`.data`这几个section，分别表示内核编译后的指令序列、只读数据（read-only data）和常规数据，这些都是常规的部分，没有什么需要额外添加的。`.bss`section包含了那些应该被初始化为0的数据，将这些数据单独用一个section来存储，编译器就可以为二进制ELF节省更多的空间，因为这样只需要在ELF头部存储section的大小，而这个section本身就可以暂时不存了（因为里面都是0）。将镜像加载到内存以后，我们必须先将`.bss`section初始化为0，这也是我们必须要记录一个section的首地址和末地址的原因（即代码重的`bss_begin`和`bss_end`符号）。而且我们必须要让每个section的首地址以8的倍数对齐，如果一个section没有对齐，就没法用`str`指令在`bss`section的初始位置开始存0，因为`str`指令只能被用于按照8字节对齐的地址。
+启动以后，树莓派就会把`kernel8.img`加载到内存中，然后从头开始执行文件，这也是`.text.boot`这个section必须被放在开头的原因。我们将要把操作系统的启动代码放到这个section中。`.text`，`.rodata`以及`.data`这几个section，分别表示内核编译后的指令序列、只读数据（read-only data）和常规数据，这些都是常规的部分，没有什么需要额外添加的。`.bss`section包含了那些应该被初始化为0的数据，将这些数据单独用一个section来存储，编译器就可以为二进制ELF节省更多的空间，因为这样只需要在ELF头部存储section的大小，而这个section本身就可以暂时不存了（因为里面都是0）。将镜像加载到内存以后，我们必须先将`.bss`section初始化为0，这也是我们必须要记录一个section的首地址和末地址的原因（即代码重的`bss_begin`和`bss_end`符号）。而且我们必须要让每个section的首地址以8的倍数对齐，如果一个section没有对齐，就没法用`str`指令在`bss`section的初始位置开始存0，因为`str`指令只能被用于按照8字节对齐的地址。  
+  
+## 启动内核
+是时候来看看[boot.S](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/src/lesson01/src/boot.S)文件,该文件包含了内核启动代码：  
+```
+#include "mm.h"
+
+.section ".text.boot"
+
+.globl _start
+_start:
+    mrs    x0, mpidr_el1        
+    and    x0, x0,#0xFF        // Check processor id
+    cbz    x0, master        // Hang for all non-primary CPU
+    b    proc_hang
+
+proc_hang: 
+    b proc_hang
+
+master:
+    adr    x0, bss_begin
+    adr    x1, bss_end
+    sub    x1, x1, x0
+    bl     memzero
+
+    mov    sp, #LOW_MEMORY
+    bl    kernel_main
+```
+让我们仔细看看这个文件：  
+```
+.section ".text.boot"
+```
+首先，我们声明了`boot.S`文件中的所有内容都属于`.test..text.boot`section。之前，我们说过这个section被链接器脚本放在内核镜像的最开始位置，所以当内核被启动的时候，最先执行的是`start`函数：  
+```
+.globl _start
+_start:
+    mrs    x0, mpidr_el1        
+    and    x0, x0,#0xFF        // Check processor id
+    cbz    x0, master        // Hang for all non-primary CPU
+    b    proc_hang
+```
+这个函数做的第一件事情就是检查处理器ID，树莓派3有四个核心处理器，启动开发版的时候，每个核心会开始执行同样的代码。然而，我们并不希望与四个处理器同时打交道，而是只想控制与第一个处理器，并使其它三个处理器处于无限循环中，这就是`_start`函数负责的工作，具体做法是从[mpidr_el1](http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0500g/BABHBJCI.html)系统寄存器中获得处理器ID，如果当前的处理器ID是0，那么程序就转到`master`函数：  
+```
+master:
+    adr    x0, bss_begin
+    adr    x1, bss_end
+    sub    x1, x1, x0
+    bl     memzero
+```
+这里，我们通过调用`memzero`指令清空了`.bss`section，我们会在后面定义这个函数。通常，在ARMv8架构下，函数的前七个参数是通过寄存器x0-x6来传递的，这个`memzero`函数只接收两个参数：起始位置（`bss_begin`）和section的长度（`bss_end - bss_begin`）。  
+```
+    mov    sp, #LOW_MEMORY
+    bl    kernel_main
+```
+将`.bss`section清零后，我们把堆栈指针初始化，然后转而执行`kernel_main`函数，树莓派将内核加载到0地址处。这也解释了为什么堆栈指针放置到足够高的地址处，堆栈无论怎么增长都保证不会覆盖内核区域。`LOW_MEMORY`被定义在mm.h文件中，且等于4MB。我们的内核堆栈不可能变得很大，而且镜像本身是非常小的，所以4MB的大小是完全足够的。  
+  
+对于一些不熟悉ARM汇编的人，我们来快速总结一下我们用到过的指令：  
++ [mrs](http://www.keil.com/support/man/docs/armasm/armasm_dom1361289881374.htm)： 把值从系统寄存器移动到通用寄存器中。
++ [and](http://www.keil.com/support/man/docs/armasm/armasm_dom1361289863017.htm)： 执行逻辑与运算。我们用这个指令获取`mpidr_el1`寄存器的最后一个字节。
++ [cbz](http://www.keil.com/support/man/docs/armasm/armasm_dom1361289867296.htm)： 将上一个计算结果与0作比较，如果结果为真（也就是上一次运算结果为0），就跳转（ARM的专业术语叫做branch，分支）到对应的函数。  
++ [b](http://www.keil.com/support/man/docs/armasm/armasm_dom1361289863797.htm)： 无条件跳转。
++ [adr](http://www.keil.com/support/man/docs/armasm/armasm_dom1361289862147.htm)： 将变量的相对地址加载到目标寄存器。通过这种方式，我们加载了`.bss`区域的起始位置和结束位置。
++ [sub](http://www.keil.com/support/man/docs/armasm/armasm_dom1361289908389.htm)： 让两个寄存器进行减法运算。  
++ [bl](http://www.keil.com/support/man/docs/armasm/armasm_dom1361289865686.htm)： "Branch with a link"，执行无条件跳转，并将返回值的地址存储到x30（链接寄存器）。当函数执行完之后，用`ret`指令返回先前的运行地址。  
++ [mov](http://www.keil.com/support/man/docs/armasm/armasm_dom1361289878994.htm)： 在寄存器之间移动值，或者将一个立即数移动到寄存器。  
+  
+这个是[ARMv8-A开发者指南](http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.den0024a/index.html)，是学习ARM指令集很好的资源。[这个页面](http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.den0024a/ch09s01s01.html)详细地列出了寄存器的惯用方法。  
+  
+## `kernel_main`函数
