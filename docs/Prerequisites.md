@@ -14,6 +14,7 @@ SD卡可以是空的，也可以是安装了[Raspbian OS](https://www.raspberryp
   
 如果你不想用Docker，你可以安装[make工具](http://www.math.tau.ac.il/~danha/courses/software1/make-intro.html)以及`aarch64-linux-gnu`工具链，如果你用的是Ubuntu系统，你需要安装`gcc-aarch64-linux-gnu`和`build-essential packages`包。  
   
-### 上一章节
+#### 上一章节
 [准备工作](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/Introduction.md)
-### 下一章节
+#### 下一章节
+[准备工作](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/Prerequisites.md)

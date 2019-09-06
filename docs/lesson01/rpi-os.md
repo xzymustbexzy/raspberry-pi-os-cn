@@ -215,11 +215,11 @@ void kernel_main(void)
   
 现在，让我们来深入了解一下树莓派。在开始之前，我推荐你们下载一份[BCM2837 ARM设备手册](https://github.com/raspberrypi/documentation/files/1888662/BCM2837-ARM-Peripherals.-.Revised.-.V2-1.pdf)。BCM2837是树莓派3B和3B+用的板子，后面我也会提到BCM2835和BCM2836，它们是更早期版本的树莓派的板子名字。  
   
-在我们开始进一步的代码阅读之前，我想先分享一些关于内存映射型设备的基础概念。BCM2837是一种简单的[SOC（System on a chip）](https://en.wikipedia.org/wiki/System_on_a_chip)（中文：系统单芯片）板子，在这种板子上，所有的设备访问都是通过内存映射来完成的。树莓派3将高于`0x3F000000`的内存地址保留给外部设备，若要激活或者配置一个特定的设备，你需要在某个设备寄存器中写入数据。设备寄存器仅仅是一个32位的内存区域（这里说的寄存器跟CPU中的寄存器不是一个概念），其中每一个比特的含义请参见BCM2837 ARM设备手册。想知道为什么我们用`0x3F000000`作为起始地址的话，可以看看手册中1.2.3节关于物理地址的描述（即使整个手册中用的都是`0x7E000000`）。  
+在我们开始进一步的代码阅读之前，我想先分享一些关于内存映射型设备的基础概念。BCM2837是一种简单的[SOC（System on a chip）](https://en.wikipedia.org/wiki/System_on_a_chip)（中文：系统单芯片）板子，在这种板子上，所有的设备访问都是通过内存映射来完成的。树莓派3将高于`0x3F000000`的内存地址保留给外部设备，若要激活或者配置一个特定的设备，你需要在某个设备寄存器中写入数据。设备寄存器仅仅是一个32位的内存区域（这里说的寄存器跟CPU中的寄存器不是一个概念），其中每一个比特的含义请参见BCM2837 ARM设备手册。想知道为什么我们用`0x3F000000`作为起始地址的话，可以看看手册中1.2.3节关于物理地址的描述（尽管整个手册中用的都是`0x7E000000`）。  
   
-从`kernel_main`函数中，你可以猜到我们将要接触Mini UART设备了。UART代表[Universal asynchronous receiver-transmitter](https://en.wikipedia.org/wiki/Universal_asynchronous_receiver-transmitter)。这个设备有能力将内存映射寄存器中的值转化为一系列的高低电平，这个高低电平通过`TTL转串口线`传递到你的电脑上，然后被你的模拟器软件翻译。我们打算用Mini UART去与树莓派进行通信。如果你想了解Mini UART的细节，请翻阅`BCM2837 ARM设备手册`的第八页。  
+从`kernel_main`函数中，你一定猜到我们将要接触Mini UART设备了。UART代表[Universal asynchronous receiver-transmitter](https://en.wikipedia.org/wiki/Universal_asynchronous_receiver-transmitter)。这个设备有能力将内存映射寄存器中的值转化为一系列的高低电平，这个高低电平通过`TTL转串口线`传递到你的电脑上，然后被你的仿真器翻译。我们打算用Mini UART去与树莓派进行通信。如果你想了解Mini UART的细节，请翻阅`BCM2837 ARM设备手册`的第八页。  
   
-一个树莓派有两个UART：Mini UART和PL011 UART。在这份教程中，我们仅仅使用前者，因此它更简单。然而，一个选做的[练习](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/lesson01/exercises.md)中有关于如何使用PL011 UART的内容，如果你想了解更多关于树莓派的这些UART以及它们的区别，你可以参考[官方文档](https://www.raspberrypi.org/documentation/configuration/uart.md)  
+一个树莓派有两个UART：Mini UART和PL011 UART。在这份教程中，我们仅仅使用前者，因此它更简单。然而，一个选做的[练习](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/lesson01/exercises.md)中有关于如何使用PL011 UART的内容，如果你想了解更多关于树莓派的这些UART以及它们的区别，你可以参考[官方文档](https://www.raspberrypi.org/documentation/configuration/uart.md)。  
   
 另一个你需要熟悉的设备是GPIO（[General-purporse input/output](https://baike.baidu.com/item/gpio/4723219)）,GPIO
 是负责控制`GPIO引脚`的，从下图可以清楚地看到它们：  
@@ -263,10 +263,10 @@ void uart_init ( void )
 #### GPIO可选功能的配置
   
 首先，我们需要激活GPIO引脚。多数的引脚可以被多种设备使用，因此在使用一个特定的引脚之前，我们需要选择引脚的`可选功能`，一个`可选功能`仅仅是一个取值范围为0-5的数值，它能够被设置到引脚上来配置与引脚连接的设备，你可以从下图中看到所有的GPIO的可选功能列表（这个图摘取自`BCM2837 ARM设备手册`中的102页）：  
-![GPIO可选功能列表](https://github.com/Sword-holder/raspberry-pi-os-cn/master/images/alt.png)  
+![GPIO可选功能列表](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/images/alt.png)  
   
 在这里你可以看到14号和15号引脚有TXD1和RXD1可选功能，这意味着如果我们为14、15号引脚选择了5号可选功能，它们就会被用作Mini UART数据发送引脚和Mini UART数据接收引脚。`GPFSEL1`寄存器是用来控制10-19号引脚的可选功能的，这些寄存器每一位的功能如下表所示（`BCM2837 ARM设备手册`第92页）：  
-![寄存器每一位的功能](https://github.com/Sword-holder/raspberry-pi-os-cn/master/images/gpfsel1.png)  
+![寄存器每一位的功能](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/images/gpfsel1.png)  
 这样你就了解了下面这几行代码的含义，它们都是用来配置14和15号GPIO引脚的，以此实现UART的正常工作：  
 ```
     unsigned int selector;
@@ -279,4 +279,164 @@ void uart_init ( void )
     put32(GPFSEL1,selector);
 ```
   
-#### GPIO 打开/关闭
+#### GPIO 上拉/下拉
+当你在使用树莓派GPIO引脚时，你会经常遇到一些像上拉/下拉这样的术语。[这篇文章](https://grantwinney.com/using-pullup-and-pulldown-resistors-on-the-raspberry-pi/)很好地解释了这些概念。如果你懒得读这篇文章，我会简要地给你解释一下什么叫上拉/下拉。  
+  
+如果你在使用一个特定引脚时，引脚没有连接任何东西，你将不能分辨它的值到底是1还是0。事实上，设备会给出一个随机值。所谓的上拉/下拉机制就是为了克服这个问题。如果你将引脚设置为上拉状态，然后不连接任何东西，那么它始终会被置为`1`（同样的，对于下拉状态而言，值始终为0）。在我们的例子中，我们既不需要上拉也不需要下拉，因为14和15号引脚都将一直处于连接状态。即使重启后，引脚也会被初始化为同样的状态，因此在使用任何引脚之前，我们一定要记得初始化它们的状态。总共有三种可能的状态，分别是：上拉、下拉和两者都不是（移除当前上拉/下拉状态后），我们需要的就是这第三种状态。  
+  
+在引脚状态之间切换不是一件很简单的工作，因为它要求物理电路去做一些`切换`。这个程序用到了`GPPUD`和`GPPUDCLK`寄存器，在`BCM2837 ARM设备手册`的101页有对它们的详细描述，我复制了其中一段描述：  
+```
+The GPIO Pull-up/down Clock Registers control the actuation of internal pull-downs on
+the respective GPIO pins. These registers must be used in conjunction with the GPPUD
+register to effect GPIO Pull-up/down changes. The following sequence of events is
+required:
+1. Write to GPPUD to set the required control signal (i.e. Pull-up or Pull-Down or neither
+to remove the current Pull-up/down)
+2. Wait 150 cycles – this provides the required set-up time for the control signal
+3. Write to GPPUDCLK0/1 to clock the control signal into the GPIO pads you wish to
+modify – NOTE only the pads which receive a clock will be modified, all others will
+retain their previous state.
+4. Wait 150 cycles – this provides the required hold time for the control signal
+5. Write to GPPUD to remove the control signal
+6. Write to GPPUDCLK0/1 to remove the clock
+```
+  
+这段程序描述了我们如何从引脚上移除上拉/下拉状态，作用对象是14和15号引脚）。  
+```
+    put32(GPPUD,0);
+    delay(150);
+    put32(GPPUDCLK0,(1<<14)|(1<<15));
+    delay(150);
+    put32(GPPUDCLK0,0);
+```
+  
+#### 初始化Mini UART
+现在，我们的Mini UART已经连接上了GPIO引脚，而且引脚已经被配置好了。`uart_init`函数的剩余部分是用来做Mini UART的初始化的。  
+```
+    put32(AUX_ENABLES,1);                   //Enable mini uart (this also enables access to its registers)
+    put32(AUX_MU_CNTL_REG,0);               //Disable auto flow control and disable receiver and transmitter (for now)
+    put32(AUX_MU_IER_REG,0);                //Disable receive and transmit interrupts
+    put32(AUX_MU_LCR_REG,3);                //Enable 8 bit mode
+    put32(AUX_MU_MCR_REG,0);                //Set RTS line to be always high
+    put32(AUX_MU_BAUD_REG,270);             //Set baud rate to 115200
+    put32(AUX_MU_IIR_REG,6);                //Clear FIFO
+
+    put32(AUX_MU_CNTL_REG,3);               //Finally, enable transmitter and receiver
+```
+  
+让我们一条一条地看。  
+  
+```
+    put32(AUX_ENABLES,1);                   //Enable mini uart (this also enables access to its registers)
+```
+这行代码打开了Mini UART。我们必须在开始前做这个，因为这个也同时会打开Mini UART的寄存器访问权限。  
+```
+    put32(AUX_MU_CNTL_REG,0);               //Disable auto flow control and disable receiver and transmitter (for now)
+```
+我们在完成配置之前，暂时禁用了接收和发送数据。同时我们也永久禁用了自动流控制，因为它要求我们使用额外的GPIO引脚，而TTL转串口线不支持这个。你可以参考[这篇文章](http://www.deater.net/weave/vmwprod/hardware/pi-rts/)来了解更多关于自动流控制的知识。  
+```
+    put32(AUX_MU_IER_REG,0);                //Disable receive and transmit interrupts
+```
+通过配置Mini UART来产生处理器实时中断是可行的，我们将在第三节课程中讲述这方面内容。现在，我们暂时禁用这个特性。  
+```
+    put32(AUX_MU_LCR_REG,3);                //Enable 8 bit mode
+```
+Mini UART支持7或8位操作。这是因为按照标准来说，ASCII字符是7位的，而在扩展版本下，增加到了8位。我们打算使用8位模式。  
+```
+    put32(AUX_MU_MCR_REG,0);                //Set RTS line to be always high
+```
+RTS行是用于流控制的，我们不需要用到它，所以将它设置为始终为高电平。
+```
+        put32(AUX_MU_BAUD_REG,270);             //Set baud rate to 115200
+```
+波特率表示信息在信道上传输的速率，“115200波特”意味着串口一秒最多能传输115200个比特。树莓派上mini UART设备的波特率应该与你的终端仿真器上的。Mini UART是按照下面的公式计算波特率的：  
+```
+baudrate = system_clock_freq / (8 * ( baudrate_reg + 1 )) 
+```
+这里的`system_clock_freq`是250MHz，因此我们可以轻松地计算出`baudrate_reg`为270。
+```
+    put32(AUX_MU_CNTL_REG,3);               //Finally, enable transmitter and receiver
+```
+当这行执行完后，Mini UART已经可以工作了！  
+  
+### 给Mini UART发送数据
+  
+当Mini UART准备就绪后，我们可以尝试用它来发送和接收一些数据。为了做到这一点，我们可以使用如下两个函数：  
+```
+void uart_send ( char c )
+{
+    while(1) {
+        if(get32(AUX_MU_LSR_REG)&0x20) 
+            break;
+    }
+    put32(AUX_MU_IO_REG,c);
+}
+
+char uart_recv ( void )
+{
+    while(1) {
+        if(get32(AUX_MU_LSR_REG)&0x01) 
+            break;
+    }
+    return(get32(AUX_MU_IO_REG)&0xFF);
+}
+```
+两个函数都从一个无限循环开始，它的目的是确定设备是否做好了传输或接收数据的准备。我们用`AUX_MU_LSR_REG`去完成这个任务，如果它的第个0比特被置为1，就表明`传输器`是空的，也就意味着我们可以写UART。接着，我们用`AUX_MU_IO_REG`来存储要传输的字符或者读取接收到的数据。  
+  
+我们也写了一个非常简单的函数去发送字符串而不是仅仅是字符：  
+```
+void uart_send_string(char* str)
+{
+    for (int i = 0; str[i] != '\0'; i ++) {
+        uart_send((char)str[i]);
+    }
+}
+```
+这个函数只是迭代遍历字符串中所有的字符，然后一个一个地发送。  
+  
+### 树莓派配置
+  
+树莓派启动的流程如下（简化版）：  
+  1.设备上电  
+  2.GPU启动，从boot分区读取`config.txt`文件。这个文件包含了GPU一些参数配置，这些参数将在之后的启动过程中被使用。  
+  3.`kernel8.img`被加载到内存然后执行程序。  
+  
+为了能运行这个简单的操作系统，`config.txt`文件应该像下面这样：  
+```
+kernel_old=1
+disable_commandline_tags=1
+```
+  
++ `kernel_old=1`指明了内核镜像应该被加载到0地址处。  
++ `disable_commandline_tags`让GPU不要向已启动的镜像传递任何命令行参数。  
+  
+### 测试内核
+  
+到这里为止，你已经看完了这节课所有的源代码，所以是时候开始实战了。为了构建并测试内核，你需要做下面几件事情：  
+  
+  1.在[src/lesson01](https://github.com/Sword-holder/raspberry-pi-os-cn/tree/master/src/lesson01)文件夹下执行`./build.sh`或`./build.bat`，从而构建内核。  
+  2.将生成的`kernel8.img`文件复制到树莓派闪存卡的`boot`分区，删除`kernel7.img`文件。请不要动除此之外的其它文件。  
+  3.按照前一节的描述，修改`config.txt`文件
+  4.按照[准备工作](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/Prerequisites.md)中描述的连接USB转TTL线
+  5.给树莓派供电
+  6.打开终端仿真器，你可以在屏幕上看到`Hello world!`。
+
+注意上述步骤的一个默认前提是你已经在你的SD卡上安装了Raspbian。当然，一张空的SD卡也是可以运行RPi OS的，你需要的做有：  
+  
+  1.准备好你的SD卡
+  - 使用MBR分区表
+  - 格式化boot分区为FAT32
+  > 这张卡必须要被格式化为安装Raspbian所要求的格式。`如何将卡格式化为FAT`请参考[官方文档](https://www.raspberrypi.org/documentation/installation/noobs.md)。  
+  2.复制以下文件到卡上：  
+  - [bootcode.bin](https://github.com/raspberrypi/firmware/blob/master/boot/bootcode.bin)：这是GPU的加载器，包含了启动GPU和加载GPU固件的代码  
+  - [start.elf](https://github.com/raspberrypi/firmware/blob/master/boot/start.elf)：这个是GPU固件。它会读取`config.txt`，然后启用GPU，加载并运行`kernel8.img`中具体的ARM指令。  
+  3.复制`kernel8.img`和`config.txt`文件  
+  4.连接USB转TTL线  
+  5.给树莓派供电  
+  6.打开终端仿真器，你可以在屏幕上看到`Hello world!`。  
+
+不幸的是，所有树莓派固件文件是闭源的，而且没有任何文档。更多关于树莓派启动流程的知识，可以参考这个[stackExchange问题](https://raspberrypi.stackexchange.com/questions/10442/what-is-the-boot-sequence)或者这个[github库](https://github.com/DieterReuter/workshop-raspberrypi-64bit-os/blob/master/part1-bootloader.md)  
+  
+#### 上一章节
+[准备工作](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/Prerequisites.md)
+#### 下一章节
