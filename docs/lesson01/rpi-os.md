@@ -1,4 +1,4 @@
-# 1.1：欢迎来到RPi OS的世界，裸机上的"Hello, World"
+## 1.1：欢迎来到RPi OS的世界，裸机上的"Hello, World"
 我们即将完成一个在裸机上输出"Hello World"的程序，以此作为操作系统开发之旅的开端。在此之前，我默认你已经阅读了[准备工作](../Prerequisites.md)，准备好了这上面所说的工具，如果还没有，请先去完成。  
   
 在我往下讲之前，我想先把教程的层次结构规范化。从README文件中你可以看到整个教程被分为多节**课程**，每节课程都包含了很多**章节**，一章课程根据标题又被分为很多**小节**。以后，我会分别使用课程、章节、小节来指代文章的引用位置。  
@@ -7,14 +7,14 @@
   
 ### 项目结构
   
-课程的文件结构都是一样的，你可以在[这里]()找到课程对应的源代码。先简单介绍一下文件夹的主要组成部分：  
+课程的文件结构都是一样的，你可以在[这里](../../src/lesson01)找到课程对应的源代码。先简单介绍一下文件夹的主要组成部分：  
   
 1.**Makefile**： 我们使用[make工具](http://www.math.tau.ac.il/~danha/courses/software1/make-intro.html)来构建内核。`make`会根据makefile的配置来执行相应的动作，所以在makefile中，我们需要给出一些如何编译与链接源代码的指令。  
 2.**build.sh或build.bat**： 如果你打算用Docker来构建内核，你就会用到这两个文件的其中一个。这样你就不需要在电脑上安装make工具或编译工具链了。  
 3.**src**： 该文件夹下包含了源代码。  
 4.**include**： 所有的头文件都放在这里。  
   
-## Makefile
+### Makefile
 现在让我们来进一步认识Makefile的使用。make工具最主要的功能，就是自动化地去判断项目中的哪些部分需要被重新编译，并调用命令把这些文件重新编译。如果你不熟悉make和Makefile，我推荐你先阅读[这篇部分内容](http://opensourceforu.com/2012/06/gnu-make-in-detail-for-beginners/)，第一节课用到的Makefile可以在[这里](../../src/lesson01/Makefile)找到。整个Makefile的内容如下：  
 ```  
 ARMGNU ?= aarch64-linux-gnu  
