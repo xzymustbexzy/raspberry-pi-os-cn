@@ -42,6 +42,6 @@
 要注意的是，这个操作系统与树莓派的更早版本并不兼容，因为之前的树莓派并不支持64位和ARM v8架构。  
   
 ### 上一章节
-[主页](https://github.com/s-matyukevich/raspberry-pi-os/)
+[主页](https://github.com/Sword-holder/raspberry-pi-os-cn)
 ### 下一章节
-[准备工作](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/Prerequisites.md)
+[准备工作](Prerequisites.md)

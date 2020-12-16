@@ -1,5 +1,5 @@
 # 1.1：欢迎来到RPi OS的世界，裸机上的"Hello, World"
-我们即将完成一个在裸机上输出"Hello World"的程序，以此作为操作系统开发之旅的开端。在此之前，我默认你已经阅读了[准备工作](https://github.com/s-matyukevich/raspberry-pi-os/blob/master/docs/Prerequisites.md)，准备好了这上面所说的工具，如果还没有，请先去完成。  
+我们即将完成一个在裸机上输出"Hello World"的程序，以此作为操作系统开发之旅的开端。在此之前，我默认你已经阅读了[准备工作](../Prerequisites.md)，准备好了这上面所说的工具，如果还没有，请先去完成。  
   
 在我往下讲之前，我想先把教程的层次结构规范化。从README文件中你可以看到整个教程被分为多节**课程**，每节课程都包含了很多**章节**，一章课程根据标题又被分为很多**小节**。以后，我会分别使用课程、章节、小节来指代文章的引用位置。  
   
@@ -15,7 +15,7 @@
 4.**include**： 所有的头文件都放在这里。  
   
 ## Makefile
-现在让我们来进一步认识Makefile的使用。make工具最主要的功能，就是自动化地去判断项目中的哪些部分需要被重新编译，并调用命令把这些文件重新编译。如果你不熟悉make和Makefile，我推荐你先阅读[这篇部分内容](http://opensourceforu.com/2012/06/gnu-make-in-detail-for-beginners/)，第一节课用到的Makefile可以在[这里](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/src/lesson01/Makefile)找到。整个Makefile的内容如下：  
+现在让我们来进一步认识Makefile的使用。make工具最主要的功能，就是自动化地去判断项目中的哪些部分需要被重新编译，并调用命令把这些文件重新编译。如果你不熟悉make和Makefile，我推荐你先阅读[这篇部分内容](http://opensourceforu.com/2012/06/gnu-make-in-detail-for-beginners/)，第一节课用到的Makefile可以在[这里](../../src/lesson01/Makefile)找到。整个Makefile的内容如下：  
 ```  
 ARMGNU ?= aarch64-linux-gnu  
   
@@ -127,7 +127,7 @@ SECTIONS
   
 ### 启动内核
   
-是时候来看看[boot.S](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/src/lesson01/src/boot.S)文件,该文件包含了内核启动代码：  
+是时候来看看[boot.S](../../src/lesson01/src/boot.S)文件,该文件包含了内核启动代码：  
 ```
 #include "mm.h"
 
@@ -156,7 +156,7 @@ master:
 ```
 .section ".text.boot"
 ```
-首先，我们声明了`boot.S`文件中的所有内容都属于`.test..text.boot`section。之前，我们说过这个section被链接器脚本放在内核镜像的最开始位置，所以当内核被启动的时候，最先执行的是`start`函数：  
+首先，我们声明了`boot.S`文件中的所有内容都属于`.text.boot`section。之前，我们说过这个section被链接器脚本放在内核镜像的最开始位置，所以当内核被启动的时候，最先执行的是`start`函数：  
 ```
 .globl _start
 _start:
@@ -219,17 +219,17 @@ void kernel_main(void)
   
 从`kernel_main`函数中，你一定猜到我们将要接触Mini UART设备了。UART代表[Universal asynchronous receiver-transmitter](https://en.wikipedia.org/wiki/Universal_asynchronous_receiver-transmitter)。这个设备有能力将内存映射寄存器中的值转化为一系列的高低电平，这个高低电平通过`TTL转串口线`传递到你的电脑上，然后被你的仿真器翻译。我们打算用Mini UART去与树莓派进行通信。如果你想了解Mini UART的细节，请翻阅`BCM2837 ARM设备手册`的第八页。  
   
-一个树莓派有两个UART：Mini UART和PL011 UART。在这份教程中，我们仅仅使用前者，因此它更简单。然而，一个选做的[练习](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/lesson01/exercises.md)中有关于如何使用PL011 UART的内容，如果你想了解更多关于树莓派的这些UART以及它们的区别，你可以参考[官方文档](https://www.raspberrypi.org/documentation/configuration/uart.md)。  
+一个树莓派有两个UART：Mini UART和PL011 UART。在这份教程中，我们仅仅使用前者，因此它更简单。然而，一个选做的[练习](exercises.md)中有关于如何使用PL011 UART的内容，如果你想了解更多关于树莓派的这些UART以及它们的区别，你可以参考[官方文档](https://www.raspberrypi.org/documentation/configuration/uart.md)。  
   
 另一个你需要熟悉的设备是GPIO（[General-purporse input/output](https://baike.baidu.com/item/gpio/4723219)）,GPIO
 是负责控制`GPIO引脚`的，从下图可以清楚地看到它们：  
-![GPIO引脚](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/images/gpio-pins.jpg)  
+![GPIO引脚](../../images/gpio-pins.jpg)  
 可以通过对GPIO引脚的配置来使用GPIO。比如，为了能够使用Mini UART，我们可以将引脚14和引脚15设置为高电平，来激活该设备。下图阐述了GPIO引脚需要的分配：  
-![GPIO引脚序号分配](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/images/gpio-numbers.png)  
+![GPIO引脚序号分配](../../images/gpio-numbers.png)  
   
 ### Mini UART的初始化
   
-现在，让我们来看看怎么将mini UART初始化。这份代码写在[mini_uart.c](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/src/lesson01/src/mini_uart.c)中：  
+现在，让我们来看看怎么将mini UART初始化。这份代码写在[mini_uart.c](../../src/lesson01/src/mini_uart.c)中：  
 ```
 void uart_init ( void )
 {
@@ -258,15 +258,15 @@ void uart_init ( void )
     put32(AUX_MU_CNTL_REG,3);               //Finally, enable transmitter and receiver
 }
 ```
-这里，我们使用了两个函数，分别是`put32`和`get32`。这两个函数非常简单，允许我们从一个32位寄存器去读取和写入数据。你可以在[utils.S](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/src/lesson01/src/utils.S)中看到它们的实现。`uart_init`这节课是最复杂也是最重要的一个函数，下面三节内容中，我们将围绕这个函数进行深入探索。  
+这里，我们使用了两个函数，分别是`put32`和`get32`。这两个函数非常简单，允许我们从一个32位寄存器去读取和写入数据。你可以在[utils.S](../../src/lesson01/src/utils.S)中看到它们的实现。`uart_init`这节课是最复杂也是最重要的一个函数，下面三节内容中，我们将围绕这个函数进行深入探索。  
   
 #### GPIO可选功能的配置
   
 首先，我们需要激活GPIO引脚。多数的引脚可以被多种设备使用，因此在使用一个特定的引脚之前，我们需要选择引脚的`可选功能`，一个`可选功能`仅仅是一个取值范围为0-5的数值，它能够被设置到引脚上来配置与引脚连接的设备，你可以从下图中看到所有的GPIO的可选功能列表（这个图摘取自`BCM2837 ARM设备手册`中的102页）：  
-![GPIO可选功能列表](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/images/alt.png)  
+![GPIO可选功能列表](../../images/alt.png)  
   
 在这里你可以看到14号和15号引脚有TXD1和RXD1可选功能，这意味着如果我们为14、15号引脚选择了5号可选功能，它们就会被用作Mini UART数据发送引脚和Mini UART数据接收引脚。`GPFSEL1`寄存器是用来控制10-19号引脚的可选功能的，这些寄存器每一位的功能如下表所示（`BCM2837 ARM设备手册`第92页）：  
-![寄存器每一位的功能](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/images/gpfsel1.png)  
+![寄存器每一位的功能](../../images/gpfsel1.png)  
 这样你就了解了下面这几行代码的含义，它们都是用来配置14和15号GPIO引脚的，以此实现UART的正常工作：  
 ```
     unsigned int selector;
@@ -414,10 +414,10 @@ disable_commandline_tags=1
   
 到这里为止，你已经看完了这节课所有的源代码，所以是时候开始实战了。为了构建并测试内核，你需要做下面几件事情：  
   
-  1.在[src/lesson01](https://github.com/Sword-holder/raspberry-pi-os-cn/tree/master/src/lesson01)文件夹下执行`./build.sh`或`./build.bat`，从而构建内核。  
+  1.在[src/lesson01](../../src/lesson01)文件夹下执行`./build.sh`或`./build.bat`，从而构建内核。  
   2.将生成的`kernel8.img`文件复制到树莓派闪存卡的`boot`分区，删除`kernel7.img`文件。请不要动除此之外的其它文件。  
   3.按照前一节的描述，修改`config.txt`文件
-  4.按照[准备工作](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/Prerequisites.md)中描述的连接USB转TTL线
+  4.按照[准备工作](../Prerequisites.md)中描述的连接USB转TTL线
   5.给树莓派供电
   6.打开终端仿真器，你可以在屏幕上看到`Hello world!`。
 
@@ -438,5 +438,5 @@ disable_commandline_tags=1
 不幸的是，所有树莓派固件文件是闭源的，而且没有任何文档。更多关于树莓派启动流程的知识，可以参考这个[stackExchange问题](https://raspberrypi.stackexchange.com/questions/10442/what-is-the-boot-sequence)或者这个[github库](https://github.com/DieterReuter/workshop-raspberrypi-64bit-os/blob/master/part1-bootloader.md)  
   
 #### 上一章节
-[准备工作](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/Prerequisites.md)
+[准备工作](../Prerequisites.md)
 #### 下一章节
