@@ -53,14 +53,14 @@ kernel8.img: $(SRC_DIR)/linker.ld $(OBJ_FILES)
 ```
 ARMGNU ?= aarch64-linux-gnu  
 ```
-这个Makefile从一个变量定义开始，`ARMGNU`表示[交叉编译](https://baike.baidu.com/item/%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91/10916911?fr=aladdin)的前缀。我们需要使用一个交叉编译器，因为我们打算在`x86`的机器上生成`arm64`的可执行文件，所以我们用`aarch64-linux-gnu-gcc`来代替`gcc`。  
+这个Makefile从一个变量定义开始，`ARMGNU`表示[交叉编译](https://baike.baidu.com/item/%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91/10916911?fr=aladdin)的前缀。我们需要使用一个交叉编译器，因为我们打算在`x86`的机器上生成`arm64`的可执行文件，所以用`aarch64-linux-gnu-gcc`来代替`gcc`。  
 ```  
 COPS = -Wall -nostdlib -nostartfiles -ffreestanding -Iinclude -mgeneral-regs-only  
 ASMOPS = -Iinclude 
 ```  
 `COPS`和`ASMOPS`是我们将c语言和汇编语言各自独立编译的时候需要的编译器选项，有必要对这两个选项做一些解释：  
 + **-Wall** 输出所有的警告信息（wall是wallning的缩写）  
-+ **-nostdlib** 不实用c语言的标准库。大多数的c语言标准库调用会转而去调用操作系统，但我们这个是将要运行在裸机上的程序，我们**没有任何底层操作系统**，所以标准库在这里是无法使用的。  
++ **-nostdlib** 不使用c语言的标准库。大多数的c语言标准库底层都会调用操作系统，但我们这个程序是运行在裸机上的，我们**没有任何底层操作系统**，所以标准库在这里是无法使用的。  
 + **-nostartfile** 不使用任何启动文件。启动文件负责设置程序初始化堆栈指针、初始化静态变量以及跳转到main函数入口，我们把所有这些事情都交给自己来完成。  
 + **-ffreestading** 一个freestading环境指的是一个不依赖于任何标准库的环境，而且程序不必要有一个main函数。`-ffreestading`选项告诉编译器不要假定标准函数都有常规的定义。  
 + **-include** 在include文件夹下寻找头文件  
