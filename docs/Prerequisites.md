@@ -17,4 +17,4 @@ SD卡可以是空的，也可以是安装了[Raspbian OS](https://www.raspberryp
 #### 上一章节
 [介绍](Introduction.md)
 #### 下一章节
-[欢迎来到RPi OS的世界，裸机上的"Hello, World"](lesson01/Prerequisites.md)
+[欢迎来到RPi OS的世界，裸机上的"Hello, World"](lesson01/rpi-os.md)
