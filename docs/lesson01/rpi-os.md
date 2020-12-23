@@ -416,10 +416,10 @@ disable_commandline_tags=1
   
   1.在[src/lesson01](../../src/lesson01)文件夹下执行`./build.sh`或`./build.bat`，从而构建内核。  
   2.将生成的`kernel8.img`文件复制到树莓派闪存卡的`boot`分区，删除`kernel7.img`文件。请不要动除此之外的其它文件。  
-  3.按照前一节的描述，修改`config.txt`文件
-  4.按照[准备工作](../Prerequisites.md)中描述的连接USB转TTL线
-  5.给树莓派供电
-  6.打开终端仿真器，你可以在屏幕上看到`Hello world!`。
+  3.按照前一节的描述，修改`config.txt`文件  
+  4.按照[准备工作](../Prerequisites.md)中描述的连接USB转TTL线  
+  5.给树莓派供电  
+  6.打开终端仿真器，你可以在屏幕上看到`Hello world!`。  
 
 注意上述步骤的一个默认前提是你已经在你的SD卡上安装了Raspbian。当然，一张空的SD卡也是可以运行RPi OS的，你需要的做有：  
   

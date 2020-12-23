@@ -11,16 +11,11 @@
 + [介绍](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/Introduction.md)
 + [准备工作](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/Prerequisites.md)
 + **Lesson 1：内核初始化**
-  - 1.1 [欢迎来到RPi OS的世界，裸机上的"Hello, world"](https://github.com/Sword-holder/raspberry-pi-os-cn/blob/master/docs/lesson01/rpi-os.md)
-  - Linux
-    * 1.2 项目结构
-    * 1.3 内核构建
-    * 1.4 启动流程
-  - 1.5 练习题
+  - 1.1 [欢迎来到RPi OS的世界，裸机上的"Hello, world"](./docs/lesson01/rpi-os.md)
+  - 1.2 [练习题](./docs/lesson01/exercises.md)
 + **Lesson 2：处理器初始化**
-  - 2.1 RPi OS
-  - 2.2 Linux
-  - 2.3 练习题
+  - 2.1 [RPi OS](./docs/lesson02/rpi-os.md)
+  - 2.2 练习题
 + **Lesson 3：中断处理**
   - 3.1 RPi OS
   - Linux
