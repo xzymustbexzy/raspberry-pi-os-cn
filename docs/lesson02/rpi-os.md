@@ -84,64 +84,65 @@ master:
 
 可以看到，这段代码绝大部分内容就是在设置一些系统寄存器。现在我们逐个看一下这些寄存器是用来干什么的。首先，我们需要下载[Arm64位架构参考手册](https://developer.arm.com/docs/ddi0487/ca/arm-architecture-reference-manual-armv8-for-armv8-a-architecture-profile)。这份文档包含了`ARM.v8`的详细规范。
 
-#### SCTLR_EL1, System Control Register (EL1), Page 2654 of AArch64-Reference-Manual.
+#### SCTLR_EL1，系统控制寄存器，参考手册2654页
 
 ```
     ldr    x0, =SCTLR_VALUE_MMU_DISABLED
     msr    sctlr_el1, x0        
 ```
 
-Here we set the value of the `sctlr_el1` system register. `sctlr_el1` is responsible for configuring different parameters of the processor, when it operates at EL1. For example, it controls whether the cache is enabled and, what is most important for us, whether the MMU (Memory Management Unit) is turned on. `sctlr_el1` is accessible from all exception levels higher or equal than EL1 (you can infer this from `_el1` postfix) 
+这段程序是在设置`sctlr_el1`寄存器的值，`sctlr_el1`负责为处理器设置不同的参数，例如，它能控制是否启用缓存，对我们更重要的是，它能控制内存管理单元（Memory Management Unit，简称MMU）的开关。只有拥有EL1或更高的优先级才能访问`sctlr_el1`。（你可以根据`_el1`后缀查找文档）
 
-`SCTLR_VALUE_MMU_DISABLED` constant is defined [here](https://github.com/s-matyukevich/raspberry-pi-os/blob/master/src/lesson02/include/arm/sysregs.h#L16) Individual bits of this value are defined like this:
+`SCTLR_VALUE_MMU_DISABLED`是一个定义在[这里](../src/lesson02/include/arm/sysregs.h#L16)的常量，这个值的每一位如下：
 
-* `#define SCTLR_RESERVED                  (3 << 28) | (3 << 22) | (1 << 20) | (1 << 11)` Some bits in the description of `sctlr_el1` register are marked as `RES1`. Those bits are reserved for future usage and should be initialized with `1`.
-* `#define SCTLR_EE_LITTLE_ENDIAN          (0 << 25)` Exception [Endianness](https://en.wikipedia.org/wiki/Endianness). This field controls endianess of explicit data access at EL1. We are going to configure the processor to work only with `little-endian` format.
-* `#define SCTLR_EOE_LITTLE_ENDIAN         (0 << 24)` Similar to previous field but this one controls endianess of explicit data access at EL0, instead of EL1. 
-* `#define SCTLR_I_CACHE_DISABLED          (0 << 12)` Disable instruction cache. We are going to disable all caches for simplicity. You can find more information about data and instruction caches [here](https://stackoverflow.com/questions/22394750/what-is-meant-by-data-cache-and-instruction-cache).
-* `#define SCTLR_D_CACHE_DISABLED          (0 << 2)` Disable data cache.
-* `#define SCTLR_MMU_DISABLED              (0 << 0)` Disable MMU. MMU must be disabled until the lesson 6, where we are going to prepare page tables and start working with virtual memory.
+* `#define SCTLR_RESERVED                  (3 << 28) | (3 << 22) | (1 << 20) | (1 << 11)` 一些描述`sctlr_el1`寄存器的位被称为`RES1`，这些位是保留的，未来可能会使用，应该被初始化位`1`。
+* `#define SCTLR_EE_LITTLE_ENDIAN          (0 << 25)` 异常的[字节序](https://en.wikipedia.org/wiki/Endianness)。这个字段控制着数据在EL1的访问方式（大端或小端）。我们在程序中使用`小端`格式。
+* `#define SCTLR_EOE_LITTLE_ENDIAN         (0 << 24)`与前面的字段类似，只是它控制的是EL0的访问方式，而不是EL1。
+* `#define SCTLR_I_CACHE_DISABLED          (0 << 12)`禁用缓存。为了方便，我们直接禁止缓存的使用。你可以从[这里](https://stackoverflow.com/questions/22394750/what-is-meant-by-data-cache-and-instruction-cache)找到更多的关于缓存的操作。
+* `#define SCTLR_D_CACHE_DISABLED          (0 << 2)` 禁用数据缓存。
+* `#define SCTLR_MMU_DISABLED              (0 << 0)` 禁用MMU。 在接触第六章之前，MMU都将被禁用。第六章我们将实现页表和虚拟内存。
 
-#### HCR_EL2, Hypervisor Configuration Register (EL2), Page 2487 of AArch64-Reference-Manual. 
-
+#### HCR_EL2，虚拟监视器的配置寄存器（EL2），参考手册2487页
 ```
     ldr    x0, =HCR_VALUE
     msr    hcr_el2, x0
 ```
+我们不打算实现[虚拟监视器](https://en.wikipedia.org/wiki/Hypervisor)。但我们仍然要用到这个寄存器，因为在其它设置中，它控制着EL1下的执行状态。执行状态必须为`AArch64`而不是`AArch32`。我们在[这里](../src/lesson02/include/arm/sysregs.h#L22)设置了这一点。
 
-We are not going to implement our own [hypervisor](https://en.wikipedia.org/wiki/Hypervisor). Stil we need to use this register because, among other settings, it controls the execution state at EL1. Execution state must be `AArch64` and not `AArch32`. This is configured [here](https://github.com/s-matyukevich/raspberry-pi-os/blob/master/src/lesson02/include/arm/sysregs.h#L22).
 
-#### SCR_EL3, Secure Configuration Register (EL3), Page 2648 of AArch64-Reference-Manual.
+#### SCR_EL3，安全设置寄存器（EL3），参考手册2648页
 
 ```
     ldr    x0, =SCR_VALUE
     msr    scr_el3, x0
 ```
 
-This register is responsible for configuring security settings. For example, it controls whether all lower levels are executed in "secure" or "nonsecure" state. It also controls execution state at EL2. [here](https://github.com/s-matyukevich/raspberry-pi-os/blob/master/src/lesson02/include/arm/sysregs.h#L26) we set that EL2  will execute at `AArch64` state, and all lower exception levels will be "non secure". 
+这个寄存器负责安全设置。例如，它控制着在更低优先级下是执行“安全”状态还是“非安全”状态。它还可以控制EL2的运行状态。在[这里](../src/lesson02/include/arm/sysregs.h#L26)，我们将EL2设置为运行在`AArch64`状态下，同时所有更低优先级将执行在“非安全”状态下。
 
-#### SPSR_EL3, Saved Program Status Register (EL3), Page 389 of AArch64-Reference-Manual.
+
+#### SPSR_EL3，保存程序状态寄存器，参考手册389页
 
 ```
     ldr    x0, =SPSR_VALUE
     msr    spsr_el3, x0
 ```
 
-This register should be already familiar to you - we mentioned it when discussed the process of changing exception levels. `spsr_el3` contains processor state, that will be restored after we execute `eret` instruction.
-It is worth saying a few words explaining what processor state is. Processor state includes the following information:
+这个寄存器你应该已经很熟悉了。我们在之前讨论异常等级切换的时候已经提到过了。`spsr_el3`包含了程序状态，可以通过执行`eret`指令来恢复程序运行状态。  
+应当解释一下什么叫程序状态。程序状态包括了：
 
-* **Condition Flags** Those flags contains information about previously executed operation: whether the result was negative (N flag), zero (A flag), has unsigned overflow (C flag) or has signed overflow (V flag). Values of those flags can be used in conditional branch instructions. For example, `b.eq` instruction will jump to the provided label only if the result of the last comparison operation is equal to 0. The processor checks this by testing whether Z flag is set to 1.
+* **条件标识符** 这些标识符包含了之前执行的运算的相关信息：运算结果是否为负数（N标识），是否为零（A标识），无符号溢出（C标识）或者有符号溢出（V标识）。这些标识符的值可以被用来作为分支指令的判定条件。例如，`b.eq`指令会在运算结果为0时跳转到给定的标识符上，处理器会检测Z标识符是否被设置为1。
 
-* **Interrupt disable bits** Those bits allows to enable/disable different types of interrupts.
+* **中断禁用位** 这些比特控制了不同类型的中断禁用/启用。
 
-* Some other information, required to fully restore the processor execution state after an exception is handled.
+* 一些需要处理完异常后被还原的其它信息。
 
-Usually `spsr_el3` is saved automatically when an exception is taken to EL3. However this register is writable, so we take advantage of this fact and manually prepare processor state. `SPSR_VALUE` is prepared [here](https://github.com/s-matyukevich/raspberry-pi-os/blob/master/src/lesson02/include/arm/sysregs.h#L35) and we initialize the following fields:
+通常在异常处理执行到EL3时，`spsr_el3`将被自动保存。然而，这个寄存器是可写的，因此我们可以利用这一个事实来手动设定处理器状态。`SPSR_VALUE`在[这里](../src/lesson02/include/arm/sysregs.h#L35)，我们将这些字段初始化为：
 
-* `#define SPSR_MASK_ALL        (7 << 6)` After we change EL to EL1 all types of interrupts will be masked (or disabled, which is the same).
-* `#define SPSR_EL1h        (5 << 0)` At EL1 we can either use our own dedicated stack pointer or use EL0 stack pointer. `EL1h` mode means that we are using EL1 dedicated stack pointer. 
+* `#define SPSR_MASK_ALL        (7 << 6)` 我们将异常等级改变为EL1后，所有的中断都会被屏蔽。
+* `#define SPSR_EL1h        (5 << 0)` 在EL1我们不能使用我们专用的栈指针或是EL0的栈指针。`EL1h`模式意味着我们将使用EL1专属的栈指针。
 
-#### ELR_EL3, Exception Link Register (EL3), Page 351 of AArch64-Reference-Manual.
+
+#### ELR_EL3，异常链接寄存器（EL3），参考手册351页
 
 ```
     adr    x0, el1_entry        
@@ -150,16 +151,18 @@ Usually `spsr_el3` is saved automatically when an exception is taken to EL3. How
     eret                
 ```
 
-`elr_el3` holds the address, to which we are going to return after `eret` instruction will be executed. Here we set this address to the location of `el1_entry` label.
+`elr_el3`保存了一个地址，我们执行`eret`指令后，该地址就会被还原。这里我们将它设置为`el1_entry`。
 
-### Conclusion
 
-That is pretty much it: when we enter `el1_entry` function the execution should be already at EL1 mode. Go ahead and try it out! 
+### 结论
 
-##### Previous Page
+当我们进入`el1_entry`函数中后，所有的指令都运行在EL1模式下了。动手试试吧！
 
-1.5 [Kernel Initialization: Exercises](../../docs/lesson01/exercises.md)
 
-##### Next Page
+#### 上一章节
+
+1.2 [内核初始化：联系](../../docs/lesson01/exercises.md)
+
+##### 下一章节
 
 2.2 [Processor initialization: Linux](../../docs/lesson02/linux.md)

@@ -440,3 +440,4 @@ disable_commandline_tags=1
 #### 上一章节
 [准备工作](../Prerequisites.md)
 #### 下一章节
+[处理器初始化](../lesson02/rpi-os.md)
